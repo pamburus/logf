@@ -122,6 +122,16 @@ func (l *Logger) With(fs ...Field) *Logger {
 	return cc
 }
 
+// WithErrorFields returns a new Logger with additional fields from the provided error.
+func (l *Logger) WithErrorFields(err error) *Logger {
+	cc := l.clone()
+	ExtractErrorFields(err, func(fields []Field) {
+		cc.fields = JoinFields(cc.fields, fields)
+	})
+
+	return cc
+}
+
 // Debug logs a debug message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Debug(text string, fs ...Field) {
@@ -160,6 +170,12 @@ func (l *Logger) Error(text string, fs ...Field) {
 	}
 
 	l.write(LevelError, text, fs)
+}
+
+// WrapError wraps the error with context information (fields)
+// which are used later when logging the error.
+func (l *Logger) WrapError(err error) error {
+	return &errorWrapper{err, l.fields[0:len(l.fields):len(l.fields)]}
 }
 
 func (l *Logger) write(lv Level, text string, fs []Field) {

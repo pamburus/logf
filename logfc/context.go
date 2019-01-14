@@ -2,6 +2,7 @@ package logfc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ssgreg/logf"
 )
@@ -22,6 +23,11 @@ func Get(ctx context.Context) *logf.Logger {
 // With returns a new Context with provided fields appended to its fields.
 func With(ctx context.Context, fields ...logf.Field) context.Context {
 	return New(ctx, Get(ctx).With(fields...))
+}
+
+// WithErrorFields returns a new Context with additional fields from the provided error.
+func WithErrorFields(ctx context.Context, err error) context.Context {
+	return New(ctx, Get(ctx).WithErrorFields(err))
 }
 
 // Debug logs a debug message with the given text, optional fields and
@@ -46,4 +52,15 @@ func Warn(ctx context.Context, text string, fs ...logf.Field) {
 // fields passed to the Logger using With function.
 func Error(ctx context.Context, text string, fs ...logf.Field) {
 	Get(ctx).Error(text, fs...)
+}
+
+// NewError returns a new error with fields inside it got from logger from the provided context.
+func NewError(ctx context.Context, text string, args ...interface{}) error {
+	return Get(ctx).WrapError(fmt.Errorf(text, args...))
+}
+
+// WrapError returns a new error with fields inside it got from logger from the provided context
+// and cause containing the original error.
+func WrapError(ctx context.Context, err error) error {
+	return Get(ctx).WrapError(err)
 }
