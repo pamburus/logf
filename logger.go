@@ -100,6 +100,10 @@ func (l *Logger) With(fs ...Field) *Logger {
 	// - BenchmarkAccumulateFields
 	// - BenchmarkAccumulateFieldsWithAccumulatedFields
 
+	if len(fs) == 0 {
+		return l
+	}
+
 	var cc *Logger
 	if len(l.fields) == 0 {
 		// The fastest way. Use passed 'fs' as is.
