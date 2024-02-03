@@ -123,10 +123,9 @@ func (l *Logger) With(fs ...Field) *Logger {
 	// - BenchmarkAccumulateFields
 	// - BenchmarkAccumulateFieldsWithAccumulatedFields
 
-	var cc *Logger
+	cc := l.fork()
 	if len(l.fields) == 0 {
 		// The fastest way. Use passed 'fs' as is.
-		cc = l.clone()
 		cc.fields = fs
 	} else {
 		// The less efficient path forces us to copy parent's fields.
@@ -134,7 +133,6 @@ func (l *Logger) With(fs ...Field) *Logger {
 		c = append(c, l.fields...)
 		c = append(c, fs...)
 
-		cc = l.clone()
 		cc.fields = c
 	}
 
@@ -196,17 +194,14 @@ func (l *Logger) write(lv Level, callerSkip int, text string, fs []Field) {
 	l.w.WriteEntry(e)
 }
 
-func (l *Logger) clone() *Logger {
-	// Field names should be omitted in order not to forget the new fields.
-	return &Logger{
-		l.level,
-		atomic.AddInt32(&nextID, 1),
-		l.w,
-		l.fields,
-		l.name,
-		l.addCaller,
-		l.callerSkip,
-	}
+func (l Logger) clone() *Logger {
+	return &l
+}
+
+func (l Logger) fork() *Logger {
+	l.id = atomic.AddInt32(&nextID, 1)
+
+	return &l
 }
 
 var nextID int32
