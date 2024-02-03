@@ -51,6 +51,10 @@ type Logger struct {
 	callerSkip int
 }
 
+// Enabled returns true if logging a message at the specified level is enabled.
+func (l *Logger) Enabled(lvl Level) bool {
+	return l.level(lvl)
+}
 
 // AtLevel calls the given fn if logging a message at the specified level
 // is enabled, passing a LogFunc with the bound level.
