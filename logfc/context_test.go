@@ -45,14 +45,6 @@ func TestCaller(t *testing.T) {
 	assert.NotEqual(t, logger, Get(MustWithCaller(ctx)))
 }
 
-func TestCallerSkip(t *testing.T) {
-	logger := logf.DisabledLogger()
-	ctx := New(context.Background(), logger)
-
-	assert.NotEqual(t, logger, Get(WithCallerSkip(ctx, 1)))
-	assert.NotEqual(t, logger, Get(MustWithCallerSkip(ctx, 1)))
-}
-
 func TestAtLevel(t *testing.T) {
 	logger := logf.NewLogger(logf.LevelInfo, logf.NewUnbufferedEntryWriter(logf.NewDiscardAppender()))
 	ctx := New(context.Background(), logger)

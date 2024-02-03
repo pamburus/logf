@@ -72,13 +72,9 @@ func TestEncoder(t *testing.T) {
 		{
 			"LoggerName",
 			Entry{
-				Caller: EntryCaller{
-					File:      "/a/b/c/f.go",
-					Line:      6,
-					Specified: true,
-				},
+				Caller: EntryCaller{},
 			},
-			`{"level":"error","ts":"0001-01-01T00:00:00Z","msg":"","caller":"c/f.go:6"}` + "\n",
+			`{"level":"error","ts":"0001-01-01T00:00:00Z","msg":""}` + "\n",
 		},
 		{
 			"FieldsNumbers",

@@ -12,7 +12,6 @@ func TestLoggerNew(t *testing.T) {
 	w := &testEntryWriter{}
 	logger := NewLogger(LevelError, w)
 
-	assert.Equal(t, 0, logger.callerSkip)
 	assert.Equal(t, false, logger.addCaller)
 	assert.True(t, logger.id > 0)
 	assert.Empty(t, logger.fields)
@@ -25,7 +24,7 @@ func TestLoggerCallerNotSpecifiedByDefault(t *testing.T) {
 	logger := NewLogger(LevelError, w)
 
 	logger.Error("")
-	assert.False(t, w.Entry.Caller.Specified)
+	assert.Equal(t, uintptr(0), w.Entry.Caller.PC)
 }
 
 func TestLoggerCallerSpecified(t *testing.T) {
@@ -33,8 +32,10 @@ func TestLoggerCallerSpecified(t *testing.T) {
 	logger := NewLogger(LevelError, w).WithCaller()
 
 	logger.Error("")
-	assert.True(t, w.Entry.Caller.Specified)
-	assert.Equal(t, "logf/logger_test.go", w.Entry.Caller.FileWithPackage())
+	assert.NotEqual(t, 0, w.Entry.Caller.PC)
+	caller, ok := w.Entry.Caller.Resolve()
+	require.True(t, ok)
+	assert.Equal(t, "logf/logger_test.go", caller.FileWithPackage())
 }
 
 func TestLoggerCallerSpecifiedWithSkip(t *testing.T) {
@@ -42,8 +43,10 @@ func TestLoggerCallerSpecifiedWithSkip(t *testing.T) {
 	logger := NewLogger(LevelError, w).WithCaller().WithCallerSkip(1)
 
 	logger.Error("")
-	assert.True(t, w.Entry.Caller.Specified)
-	assert.Equal(t, "testing/testing.go", w.Entry.Caller.FileWithPackage())
+	assert.NotEqual(t, 0, w.Entry.Caller.PC)
+	caller, ok := w.Entry.Caller.Resolve()
+	require.True(t, ok)
+	assert.Equal(t, "testing/testing.go", caller.FileWithPackage())
 }
 
 func TestLoggerNoNameByDefault(t *testing.T) {
@@ -201,7 +204,6 @@ func TestLoggerChecker(t *testing.T) {
 
 func TestLoggerDisabled(t *testing.T) {
 	logger := DisabledLogger()
-	assert.Equal(t, 0, logger.callerSkip)
 	assert.Equal(t, false, logger.addCaller)
 	assert.True(t, logger.id > 0)
 	assert.Empty(t, logger.fields)

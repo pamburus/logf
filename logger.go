@@ -45,10 +45,9 @@ type Logger struct {
 	id    int32
 	w     EntryWriter
 
-	fields     []Field
-	name       string
-	addCaller  bool
-	callerSkip int
+	fields    []Field
+	name      string
+	addCaller bool
 }
 
 // Enabled returns true if logging a message at the specified level is enabled.
@@ -64,7 +63,7 @@ func (l *Logger) AtLevel(lvl Level, fn func(LogFunc)) {
 	}
 
 	fn(func(text string, fs ...Field) {
-		l.write(lvl, 1, text, fs)
+		l.log(lvl, 1, text, fs)
 	})
 }
 
@@ -108,11 +107,8 @@ func (l *Logger) WithCaller() *Logger {
 
 // WithCallerSkip returns a new Logger with increased number of skipped
 // frames. It's usable to build a custom wrapper for the Logger.
-func (l *Logger) WithCallerSkip(skip int) *Logger {
-	cc := l.clone()
-	cc.callerSkip = skip
-
-	return cc
+func (l *Logger) WithCallerSkip(skip int) PreparedLogger {
+	return PreparedLogger{l: l, callerSkip: skip}
 }
 
 // With returns a new Logger with the given additional fields.
@@ -145,50 +141,68 @@ func (l *Logger) With(fs ...Field) *Logger {
 
 // Log logs a message with the given level, text and optional fields.
 func (l *Logger) Log(lvl Level, text string, fs ...Field) {
-	l.log(lvl, l.callerSkip+1, text, fs)
+	l.log(lvl, 1, text, fs)
 }
 
 // Debug logs a debug message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Debug(text string, fs ...Field) {
-	l.log(LevelDebug, l.callerSkip+1, text, fs)
+	l.log(LevelDebug, 1, text, fs)
 }
 
 // Info logs an info message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Info(text string, fs ...Field) {
-	l.log(LevelInfo, l.callerSkip+1, text, fs)
+	l.log(LevelInfo, 1, text, fs)
 }
 
 // Warn logs a warning message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Warn(text string, fs ...Field) {
-	l.log(LevelWarn, l.callerSkip+1, text, fs)
+	l.log(LevelWarn, 1, text, fs)
 }
 
 // Error logs an error message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Error(text string, fs ...Field) {
-	l.log(LevelError, l.callerSkip+1, text, fs)
+	l.log(LevelError, 1, text, fs)
+}
+
+// WithCallerPC returns a new PreparedLogger with the given program counter.
+func (l *Logger) WithCallerPC(pc uintptr) PreparedLogger {
+	return PreparedLogger{l: l, pc: pc}
+}
+
+// WithTime returns a new PreparedLogger with the given timestamp.
+func (l *Logger) WithTime(ts time.Time) PreparedLogger {
+	return PreparedLogger{l: l, ts: ts}
 }
 
 func (l *Logger) log(lvl Level, callerSkip int, text string, fs []Field) {
+	l.logCustomized(lvl, callerSkip+1, 0, time.Time{}, text, fs)
+}
+
+func (l *Logger) logCustomized(lvl Level, callerSkip int, pc uintptr, ts time.Time, text string, fs []Field) {
 	if !l.level(lvl) {
 		return
 	}
 
-	l.write(lvl, callerSkip+1, text, fs)
-}
+	if ts == (time.Time{}) {
+		ts = time.Now()
+	}
 
-func (l *Logger) write(lv Level, callerSkip int, text string, fs []Field) {
 	// Snapshot non-const fields.
 	for i := range fs {
 		snapshotField(&fs[i])
 	}
 
-	e := Entry{l.id, l.name, l.fields, fs, lv, time.Now(), text, EntryCaller{}}
+	e := Entry{l.id, l.name, l.fields, fs, lvl, ts, text, EntryCaller{}}
 	if l.addCaller {
-		e.Caller = NewEntryCaller(callerSkip + 1)
+		if pc != 0 {
+			e.Caller = NewEntryCallerWithPC(pc)
+		} else {
+			e.Caller = NewEntryCaller(callerSkip + 1)
+		}
 	}
 
 	l.w.WriteEntry(e)
@@ -202,6 +216,67 @@ func (l Logger) fork() *Logger {
 	l.id = atomic.AddInt32(&nextID, 1)
 
 	return &l
+}
+
+type PreparedLogger struct {
+	l          *Logger
+	callerSkip int
+	pc         uintptr
+	ts         time.Time
+}
+
+// Log logs a message with the given level, text and optional fields.
+func (l PreparedLogger) Log(lvl Level, text string, fs ...Field) {
+	l.log(lvl, 1, text, fs)
+}
+
+// Debug logs a debug message with the given text, optional fields and
+// fields passed to the Logger using With function.
+func (l PreparedLogger) Debug(text string, fs ...Field) {
+	l.log(LevelDebug, 1, text, fs)
+}
+
+// Info logs an info message with the given text, optional fields and
+// fields passed to the Logger using With function.
+func (l PreparedLogger) Info(text string, fs ...Field) {
+	l.log(LevelInfo, 1, text, fs)
+}
+
+// Warn logs a warning message with the given text, optional fields and
+// fields passed to the Logger using With function.
+func (l PreparedLogger) Warn(text string, fs ...Field) {
+	l.log(LevelWarn, 1, text, fs)
+}
+
+// Error logs an error message with the given text, optional fields and
+// fields passed to the Logger using With function.
+func (l PreparedLogger) Error(text string, fs ...Field) {
+	l.log(LevelError, 1, text, fs)
+}
+
+// WithCallerPC returns a new PreparedLogger with the given program counter.
+func (l PreparedLogger) WithCallerPC(pc uintptr) PreparedLogger {
+	l.pc = pc
+
+	return l
+}
+
+// WithTime returns a new PreparedLogger with the given timestamp.
+func (l PreparedLogger) WithTime(ts time.Time) PreparedLogger {
+	l.ts = ts
+
+	return l
+}
+
+// WithCallerSkip returns a new PreparedLogger with increased number of skipped frames.
+func (l PreparedLogger) WithCallerSkip(callerSkip int) PreparedLogger {
+	l.callerSkip += callerSkip
+
+	return l
+}
+
+func (l PreparedLogger) log(lvl Level, callerSkip int, text string, fs []Field) {
+	l.l.logCustomized(lvl, l.callerSkip+callerSkip+1, l.pc, l.ts, text, fs)
 }
 
 var nextID int32

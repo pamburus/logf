@@ -79,9 +79,11 @@ func (f *jsonEncoder) Encode(buf *Buffer, e Entry) error {
 	}
 
 	// Caller.
-	if !f.DisableFieldCaller && e.Caller.Specified {
-		f.addKey(f.FieldKeyCaller)
-		f.EncodeCaller(e.Caller, f)
+	if !f.DisableFieldCaller && e.Caller.PC != 0 {
+		if info, ok := e.Caller.Resolve(); ok {
+			f.addKey(f.FieldKeyCaller)
+			f.EncodeCaller(info, f)
+		}
 	}
 
 	// Logger's fields.

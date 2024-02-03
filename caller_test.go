@@ -8,19 +8,19 @@ import (
 
 func TestEntryCallerFileWithPackage(t *testing.T) {
 	cases := []struct {
-		caller EntryCaller
+		caller CallerInfo
 		golden string
 	}{
 		{
-			caller: EntryCaller{0, "/a/b/c/d.go", 66, true},
+			caller: CallerInfo{0, "/a/b/c/d.go", 66},
 			golden: "c/d.go",
 		},
 		{
-			caller: EntryCaller{0, "c/d.go", 66, true},
+			caller: CallerInfo{0, "c/d.go", 66},
 			golden: "c/d.go",
 		},
 		{
-			caller: EntryCaller{0, "d.go", 66, true},
+			caller: CallerInfo{0, "d.go", 66},
 			golden: "d.go",
 		},
 	}
@@ -33,15 +33,17 @@ func TestEntryCallerFileWithPackage(t *testing.T) {
 func TestEntryCaller(t *testing.T) {
 	caller := NewEntryCaller(0)
 
-	assert.True(t, caller.Specified)
-	assert.True(t, caller.Line > 0 && caller.Line < 1000)
-	assert.Equal(t, "logf/caller_test.go", caller.FileWithPackage())
-	assert.Contains(t, caller.File, "/logf/caller_test.go")
+	assert.NotEqual(t, 0, caller.PC)
+	info, ok := caller.Resolve()
+	assert.True(t, ok)
+	assert.True(t, info.Line > 0 && info.Line < 1000)
+	assert.Equal(t, "logf/caller_test.go", info.FileWithPackage())
+	assert.Contains(t, info.File, "/logf/caller_test.go")
 }
 
 func TestShortCallerEncoder(t *testing.T) {
 	enc := testTypeEncoder{}
-	caller := EntryCaller{0, "/a/b/c/d.go", 66, true}
+	caller := CallerInfo{0, "/a/b/c/d.go", 66}
 	ShortCallerEncoder(caller, &enc)
 
 	assert.EqualValues(t, "c/d.go:66", enc.result)
@@ -49,7 +51,7 @@ func TestShortCallerEncoder(t *testing.T) {
 
 func TestFullCallerEncoder(t *testing.T) {
 	enc := testTypeEncoder{}
-	caller := EntryCaller{0, "/a/b/c/d.go", 66, true}
+	caller := CallerInfo{0, "/a/b/c/d.go", 66}
 	FullCallerEncoder(caller, &enc)
 
 	assert.EqualValues(t, "/a/b/c/d.go:66", enc.result)

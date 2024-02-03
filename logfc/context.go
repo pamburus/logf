@@ -103,23 +103,6 @@ func MustWithCaller(ctx context.Context) context.Context {
 	return New(ctx, MustGet(ctx).WithCaller())
 }
 
-// WithCallerSkip returns a new context.Context with a new logf.Logger
-// that adds a special annotation parameters with additional n skipped frames
-// to each logging message, such as the filename and line number of a caller.
-// If there is no logf.Logger is associated with ctx, logf.DisabledLogger()
-// is used as a base logger.
-func WithCallerSkip(ctx context.Context, n int) context.Context {
-	return New(ctx, Get(ctx).WithCallerSkip(n))
-}
-
-// MustWithCallerSkip returns a new context.Context with a logf.Logger
-// that adds a special annotation parameters with additional n skipped frames
-// to each logging message, such as the filename and line number of a caller
-// or panics if no logf.Logger is associated with ctx.
-func MustWithCallerSkip(ctx context.Context, n int) context.Context {
-	return New(ctx, MustGet(ctx).WithCallerSkip(n))
-}
-
 // AtLevel calls the given fn if logging a message at the specified level
 // is enabled, passing a logf.LogFunc with the bound level
 // or does nothing if there is no logf.Logger associated with ctx.
