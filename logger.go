@@ -64,7 +64,7 @@ func (l *Logger) AtLevel(lvl Level, fn func(LogFunc)) {
 	}
 
 	fn(func(text string, fs ...Field) {
-		l.write(lvl, text, fs)
+		l.write(lvl, 1, text, fs)
 	})
 }
 
@@ -145,47 +145,44 @@ func (l *Logger) With(fs ...Field) *Logger {
 	return cc
 }
 
+// Log logs a message with the given level, text and optional fields.
+func (l *Logger) Log(lvl Level, text string, fs ...Field) {
+	l.log(lvl, l.callerSkip+1, text, fs)
+}
+
 // Debug logs a debug message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Debug(text string, fs ...Field) {
-	if !l.level(LevelDebug) {
-		return
-	}
-
-	l.write(LevelDebug, text, fs)
+	l.log(LevelDebug, l.callerSkip+1, text, fs)
 }
 
 // Info logs an info message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Info(text string, fs ...Field) {
-	if !l.level(LevelInfo) {
-		return
-	}
-
-	l.write(LevelInfo, text, fs)
+	l.log(LevelInfo, l.callerSkip+1, text, fs)
 }
 
 // Warn logs a warning message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Warn(text string, fs ...Field) {
-	if !l.level(LevelWarn) {
-		return
-	}
-
-	l.write(LevelWarn, text, fs)
+	l.log(LevelWarn, l.callerSkip+1, text, fs)
 }
 
 // Error logs an error message with the given text, optional fields and
 // fields passed to the Logger using With function.
 func (l *Logger) Error(text string, fs ...Field) {
-	if !l.level(LevelError) {
+	l.log(LevelError, l.callerSkip+1, text, fs)
+}
+
+func (l *Logger) log(lvl Level, callerSkip int, text string, fs []Field) {
+	if !l.level(lvl) {
 		return
 	}
 
-	l.write(LevelError, text, fs)
+	l.write(lvl, callerSkip+1, text, fs)
 }
 
-func (l *Logger) write(lv Level, text string, fs []Field) {
+func (l *Logger) write(lv Level, callerSkip int, text string, fs []Field) {
 	// Snapshot non-const fields.
 	for i := range fs {
 		snapshotField(&fs[i])
@@ -193,7 +190,7 @@ func (l *Logger) write(lv Level, text string, fs []Field) {
 
 	e := Entry{l.id, l.name, l.fields, fs, lv, time.Now(), text, EntryCaller{}}
 	if l.addCaller {
-		e.Caller = NewEntryCaller(2 + l.callerSkip)
+		e.Caller = NewEntryCaller(callerSkip + 1)
 	}
 
 	l.w.WriteEntry(e)
