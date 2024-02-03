@@ -33,6 +33,9 @@ func DisabledLogger() *Logger {
 	return defaultDisabledLogger
 }
 
+// LogFunc allows to log a message with a bound level.
+type LogFunc func(string, ...Field)
+
 // Logger is the fast, asynchronous, structured logger.
 //
 // The Logger wraps EntryWriter to check logging level and provide a bit of
@@ -48,8 +51,6 @@ type Logger struct {
 	callerSkip int
 }
 
-// LogFunc allows to log a message with a bound level.
-type LogFunc func(string, ...Field)
 
 // AtLevel calls the given fn if logging a message at the specified level
 // is enabled, passing a LogFunc with the bound level.
