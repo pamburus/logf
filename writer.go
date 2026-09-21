@@ -3,6 +3,7 @@ package logf
 import (
 	"io"
 	"os"
+	"sync"
 	"syscall"
 )
 
@@ -28,8 +29,8 @@ func WriterFromIO(w io.Writer) Writer {
 	if sw, ok := w.(Writer); ok {
 		return sw
 	}
-	return ioWriter{
-		Writer:  w,
+	return &ioWriter{
+		writer:  w,
 		flusher: asFlusher(w),
 		syncer:  asSyncer(w),
 	}
@@ -39,19 +40,30 @@ type flusher interface{ Flush() error }
 type syncer interface{ Sync() error }
 
 type ioWriter struct {
-	io.Writer
+	mu      sync.Mutex
+	writer  io.Writer
 	flusher flusher
 	syncer  syncer
 }
 
-func (w ioWriter) Flush() error {
+func (w *ioWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.writer.Write(p)
+}
+
+func (w *ioWriter) Flush() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	if w.flusher != nil {
 		return w.flusher.Flush()
 	}
 	return nil
 }
 
-func (w ioWriter) Sync() error {
+func (w *ioWriter) Sync() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	if w.syncer != nil {
 		return w.syncer.Sync()
 	}
